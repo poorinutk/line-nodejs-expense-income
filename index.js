@@ -1,8 +1,14 @@
 'use strict';
 
+
 const line = require('@line/bot-sdk');
 const express = require('express');
 const config = require('./config.json');
+var storeLock = "";
+const { incomeExpense } = require('./IncomeExpense');
+const { replyText } = require('./Process/replymessage.js');
+
+
 
 // create LINE SDK client
 const client = new line.messagingApi.MessagingApiClient(config);
@@ -11,11 +17,13 @@ const app = express();
 
 // webhook callback
 app.post('/webhook', line.middleware(config), (req, res) => {
-  // req.body.events should be an array of events
+  // ��Ǩ�ͺ��� req.body.events ����������
   if (!Array.isArray(req.body.events)) {
+    res.setHeader('Content-Type', 'application/json; charset=UTF-8');
     return res.status(500).end();
   }
-  // handle events separately
+
+  // ���Թ��áѺ�������ǹ��
   Promise.all(req.body.events.map(event => {
     console.log('event', event);
     return handleEvent(event);
@@ -28,7 +36,9 @@ app.post('/webhook', line.middleware(config), (req, res) => {
 });
 
 // simple reply function
-const replyText = (replyToken, text, quoteToken) => {
+/*const replyText = (replyToken, text, quoteToken,userId) => {
+  
+  //text = 'วันนี้อยู่ล็อค '+storeLock;
   return client.replyMessage({
     replyToken,
     messages: [{
@@ -37,16 +47,17 @@ const replyText = (replyToken, text, quoteToken) => {
       quoteToken
     }]
   });
-};
+};*/
 
 // callback function to handle a single event
 function handleEvent(event) {
   switch (event.type) {
     case 'message':
       const message = event.message;
+      const userId = event.source.userId;
       switch (message.type) {
         case 'text':
-          return handleText(message, event.replyToken);
+          return handleText(message, event.replyToken,userId);
         case 'image':
           return handleImage(message, event.replyToken);
         case 'video':
@@ -86,8 +97,14 @@ function handleEvent(event) {
   }
 }
 
-function handleText(message, replyToken) {
-  return replyText(replyToken, message.text, message.quoteToken);
+function handleText(message, replyToken,userId) {
+  const text = message.text;   
+  const quoteToken = ""; 
+
+  console.log('log001');
+  incomeExpense(client,replyToken, text, quoteToken, userId);
+  //return replyText(replyToken, message.text, "",userId);
+  return '';
 }
 
 function handleImage(message, replyToken) {
@@ -114,3 +131,5 @@ const port = config.port;
 app.listen(port, () => {
   console.log(`listening on ${port}`);
 });
+
+
